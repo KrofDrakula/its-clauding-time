@@ -1,5 +1,7 @@
 # it's clauding time
 
+![](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2FodHRyMGNsZG9xaW5mOHV1YnpkYnVtam1nbWM5ZDZmZDEyOW5tdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/4WjvZ6lHmrGRKT18FT/giphy.gif)
+
 My opinionated [Claude Code](https://code.claude.com) kit, packaged as an
 installable plugin. It ships the output styles and skills I actually use.
 
@@ -17,8 +19,8 @@ whole install.
 
 ### Output styles
 
-| Style | What it does |
-| --- | --- |
+| Style             | What it does                                                                                                                                                                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `clauding:STE100` | Makes Claude write all user-facing prose in [ASD-STE100 Simplified Technical English](https://en.wikipedia.org/wiki/Simplified_Technical_English): one fact per sentence, active voice, plain words, no idioms. Code, paths, and error messages stay verbatim. |
 
 Pick it with `/output-style` after the plugin is enabled, or set it in
