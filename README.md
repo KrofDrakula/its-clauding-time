@@ -1,4 +1,4 @@
-# it's clauding time
+# It's Clauding Time!
 
 ![](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2FodHRyMGNsZG9xaW5mOHV1YnpkYnVtam1nbWM5ZDZmZDEyOW5tdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/4WjvZ6lHmrGRKT18FT/giphy.gif)
 
@@ -22,6 +22,7 @@ whole install.
 | Style             | What it does                                                                                                                                                                                                                                                   |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `clauding:STE100` | Makes Claude write all user-facing prose in [ASD-STE100 Simplified Technical English](https://en.wikipedia.org/wiki/Simplified_Technical_English): one fact per sentence, active voice, plain words, no idioms. Code, paths, and error messages stay verbatim. |
+| `clauding:grug`   | Makes Claude talk to you in the voice of the [grug brained developer](https://grugbrain.dev/): small words, short sentences, complexity very bad. Code, comments, commit messages, and any document meant for other people stay in clear, plain English.       |
 
 Pick it with `/output-style` after the plugin is enabled, or set it in
 `settings.json`:

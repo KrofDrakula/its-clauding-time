@@ -20,6 +20,11 @@ skills, opinionated on purpose.
 - **`claude plugin validate` takes a manifest path or a plugin root.** Pointing
   it at `output-styles/` fails with a missing-manifest error, which reads like a
   bug and is not one.
+- **This file lives in `.claude/`, not the repo root.** The repo root is also
+  the plugin root, and `claude plugin validate --strict` fails on a root
+  `CLAUDE.md`: it warns that the file is not loaded as plugin context. Claude
+  Code still loads `.claude/CLAUDE.md` for sessions in this repo. An installed
+  plugin never loads it, which is correct — it is author-facing.
 - **There is no CI.** Verification is the human running the steps below.
 
 ## Adding a component
