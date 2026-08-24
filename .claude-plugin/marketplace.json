@@ -1,0 +1,17 @@
+{
+  "name": "krofdrakula",
+  "owner": {
+    "name": "Klemen Slavič",
+    "url": "https://github.com/KrofDrakula"
+  },
+  "description": "Klemen Slavič's Claude Code plugins.",
+  "plugins": [
+    {
+      "name": "clauding",
+      "source": "./",
+      "description": "Opinionated output styles and skills for Claude Code.",
+      "category": "productivity",
+      "keywords": ["output-styles", "ste100", "skills"]
+    }
+  ]
+}

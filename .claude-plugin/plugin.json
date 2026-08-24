@@ -1,0 +1,18 @@
+{
+  "name": "clauding",
+  "version": "1.0.0",
+  "description": "Klemen Slavič's opinionated Claude Code kit: output styles and skills, shared as-is. Fork it rather than bend it.",
+  "author": {
+    "name": "Klemen Slavič",
+    "url": "https://github.com/KrofDrakula"
+  },
+  "homepage": "https://github.com/KrofDrakula/its-clauding-time",
+  "repository": "https://github.com/KrofDrakula/its-clauding-time",
+  "license": "MIT",
+  "keywords": [
+    "output-styles",
+    "ste100",
+    "simplified-technical-english",
+    "skills"
+  ]
+}
