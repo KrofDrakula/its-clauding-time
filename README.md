@@ -36,7 +36,9 @@ so the bare name `STE100` will not resolve to this one.
 
 ### Skills
 
-None yet.
+| Skill | What it does |
+| ----- | ------------ |
+| `clauding:sveltekit-pwa` | Scaffolds a SvelteKit app as an installable, offline-capable PWA with a Docker image, in a new local git repo. It follows the current SvelteKit docs (`llms.txt`), ships a service worker with an allowlist router and a `/reset` repair route, hashed install icons, and a production Dockerfile. References cover offline design, audio, wake lock, range-request media, Safari quirks and Docker variants. |
 
 ## Updates
 

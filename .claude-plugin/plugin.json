@@ -1,6 +1,6 @@
 {
   "name": "clauding",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Klemen Slavič's opinionated Claude Code kit: output styles and skills, shared as-is. Fork it rather than bend it.",
   "author": {
     "name": "Klemen Slavič",
@@ -13,6 +13,8 @@
     "output-styles",
     "ste100",
     "simplified-technical-english",
-    "skills"
+    "skills",
+    "sveltekit",
+    "pwa"
   ]
 }

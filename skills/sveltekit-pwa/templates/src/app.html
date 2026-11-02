@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- Dark before any CSS loads, so the system bars never flash another color. -->
+<html lang="en" style="background: #000">
+  <head>
+    <meta charset="utf-8" />
+    <!-- viewport-fit=cover lets the app draw under the notch and home
+         indicator in an installed iOS app. The CSS pads for them with
+         env(safe-area-inset-*). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="text-scale" content="scale" />
+    <!-- Android: Chrome colors the status bar with theme-color. -->
+    <meta name="theme-color" content="#000000" />
+    <!-- Any system area the page does not paint is dark, not white. -->
+    <meta name="color-scheme" content="dark" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- iOS reads these tags when the app is added to the Home Screen, and only
+         then: remove the app and add it again after a change. black-translucent
+         lets the page draw under the status bar. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="__APP_TITLE__" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
