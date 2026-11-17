@@ -1,6 +1,6 @@
 {
   "name": "clauding",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Klemen Slavič's opinionated Claude Code kit: output styles, skills and mods, shared as-is. Fork it rather than bend it.",
   "author": {
     "name": "Klemen Slavič",
@@ -17,7 +17,8 @@
     "sveltekit",
     "pwa",
     "mods",
-    "context-window"
+    "context-window",
+    "usage-limits"
   ],
   "types": "./types/index.d.ts"
 }

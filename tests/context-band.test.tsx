@@ -173,3 +173,78 @@ for (const reason of ['clear', 'resume'] as const) {
     )
   })
 }
+
+// The right side of the band: the usage windows.
+const LIMITS = { type: 'Text', text: /\((5h|week)\)/ }
+
+const limitsText = async ($: Engine) => {
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const text = (await ui.find(LIMITS))?.text
+  await ui.unmount()
+  return text
+}
+
+test('the band shows the usage windows on the right', async ($, on) => {
+  engine(on)
+  await $.session.measure({
+    context: { tokens: 84_000, window: 200_000, percent: 42 },
+    rateLimits: [
+      { kind: 'seven_day', percentUsed: 12.4 },
+      { kind: 'five_hour', percentUsed: 5 },
+      { kind: 'spend_limit', percentUsed: 70 },
+    ],
+    changed: ['context', 'rateLimits'],
+  })
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...BAND, surface })
+    expect((await ui.find(LIMITS))?.text).toBe('5% (5h) / 12% (week)')
+    expect((await ui.find({ type: 'Text', text: /Context/ }))?.text).toContain('42%')
+    await ui.unmount()
+  }
+})
+
+test('the band shows no usage figure off a subscription', async ($, on) => {
+  engine(on)
+  await $.session.measure({
+    context: { tokens: 84_000, window: 200_000, percent: 42 },
+    rateLimits: [],
+    changed: ['context'],
+  })
+
+  expect(await limitsText($)).toBeUndefined()
+})
+
+test('a context move keeps the last usage figures', async ($, on) => {
+  engine(on)
+  await $.session.measure({
+    context: { window: 200_000 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 30 }],
+    changed: ['rateLimits'],
+  })
+  await $.session.measure({
+    context: { tokens: 10_000, window: 200_000, percent: 5 },
+    rateLimits: [],
+    changed: ['context'],
+  })
+
+  expect(await limitsText($)).toBe('30% (5h)')
+})
+
+test('the band reads the usage windows at session start', async ($, on) => {
+  on('session.usage', () => ({
+    value: {
+      startedAt: 0,
+      context: { window: 200_000 },
+      rateLimits: [
+        { kind: 'five_hour', percentUsed: 81 },
+        { kind: 'seven_day', percentUsed: 40 },
+      ],
+    },
+  }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+
+  expect(await limitsText($)).toBe('81% (5h) / 40% (week)')
+})

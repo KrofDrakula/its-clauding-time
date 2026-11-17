@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — 2026-11-17
+
+- The context band now shows the account's usage windows at the right end of
+  its row: `5% (5h) / 12% (week)`. The figures come from the last response and
+  update when a window moves a whole point. The text turns yellow at 50% and red
+  at 80% of the fuller window. Off a subscription the engine reports no windows,
+  and the right end stays empty.
+
 ## 1.3.0 — 2026-11-17
 
 - Adds the context band, the plugin's first mod. A row above the prompt shows

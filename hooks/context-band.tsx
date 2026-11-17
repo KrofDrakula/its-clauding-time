@@ -1,11 +1,21 @@
 import { atom, read, update } from 'claude-code'
-import type { Color, EngineInterface, On, SessionContextUsage } from 'claude-code'
+import type {
+  Color,
+  EngineInterface,
+  On,
+  SessionContextUsage,
+  SessionRateLimit,
+} from 'claude-code'
 
-import type { ContextFill } from '../types'
+import type { ContextFill, UsageLimits } from '../types'
 
 // The last context fill the engine reported. Kept in `$.state`, so a reload
 // of the module keeps the figure on screen.
 const fill = atom({ plugin: 'clauding', key: 'context' } as const, null)
+
+// The account's rate-limit windows, by the same rule. Off a subscription the
+// engine reports none, and the band then shows no figure on the right.
+const limits = atom({ plugin: 'clauding', key: 'limits' } as const, null)
 
 const BAR_CELLS = 10
 const WARN_AT = 50
@@ -43,6 +53,25 @@ const colorFor = (percent: number | undefined): Color => {
   return 'success'
 }
 
+// The windows the right side shows, in this order. A gateway's `spend_limit`
+// is not an account budget and stays out.
+const WINDOWS = [
+  { kind: 'five_hour', label: '5h' },
+  { kind: 'seven_day', label: 'week' },
+] as const
+
+const toLimits = (rateLimits: SessionRateLimit[]): UsageLimits => {
+  const shown = WINDOWS.flatMap(({ kind, label }) => {
+    const window = rateLimits.find(limit => limit.kind === kind)
+    return window === undefined ? [] : [{ label, percent: window.percentUsed }]
+  })
+  return shown.length === 0 ? null : shown
+}
+
+// "5% (5h) / 12% (week)".
+const limitsText = (windows: NonNullable<UsageLimits>): string =>
+  windows.map(({ label, percent }) => `${Math.round(percent)}% (${label})`).join(' / ')
+
 // Drops `breakdown`, which a stored figure has no use for.
 const toFill = ({ tokens, window, percent }: SessionContextUsage): ContextFill =>
   tokens === undefined ? null : { tokens, window, percent }
@@ -50,8 +79,9 @@ const toFill = ({ tokens, window, percent }: SessionContextUsage): ContextFill =
 // Reads the live figure. After /clear or /compact the engine has no fill
 // until the next response, and the band then says so.
 const refresh = async ($: EngineInterface) => {
-  const { context } = await $.session.usage()
+  const { context, rateLimits } = await $.session.usage()
   await update($, fill, () => toFill(context))
+  await update($, limits, () => toLimits(rateLimits))
 }
 
 export const registerContextBand = (on: On) => {
@@ -62,11 +92,14 @@ export const registerContextBand = (on: On) => {
     return result
   })
 
-  // The engine pushes this after each main-thread turn. Only a move of the
-  // context fill is news here; a rate-limit or cost move keeps the last fill.
+  // The engine pushes this after each main-thread turn, and when a rate-limit
+  // window moves a whole point. Each unit updates only when it moved.
   on('session.measure', async ($, e, next) => {
     if (e.changed.includes('context')) {
       await update($, fill, () => toFill(e.context))
+    }
+    if (e.changed.includes('rateLimits')) {
+      await update($, limits, () => toLimits(e.rateLimits))
     }
     return next(e)
   })
@@ -92,12 +125,25 @@ export const registerContextBand = (on: On) => {
     if (e.props.hasSurvey) return next(e)
 
     const context = await read($, fill)
-    const { Text } = $.ui.resolve(e)
+    const windows = await read($, limits)
+    const { Box, Text } = $.ui.resolve(e)
+    const fullest = windows && Math.max(...windows.map(window => window.percent))
 
     return (
-      <Text color={colorFor(context?.percent)} wrap="truncate">
-        {bandText(context)}
-      </Text>
+      <Box flexDirection="row" justifyContent="space-between" gap={2}>
+        <Box flexShrink={1}>
+          <Text color={colorFor(context?.percent)} wrap="truncate">
+            {bandText(context)}
+          </Text>
+        </Box>
+        {windows && (
+          <Box flexShrink={0}>
+            <Text color={colorFor(fullest ?? undefined)} wrap="truncate">
+              {limitsText(windows)}
+            </Text>
+          </Box>
+        )}
+      </Box>
     )
   })
 }
