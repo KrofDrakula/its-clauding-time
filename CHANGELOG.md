@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — 2026-11-17
+
+- Adds the context band, the plugin's first mod. A row above the prompt shows
+  how full the context window is: a bar, the percentage, and the tokens used
+  against the window size. The row turns yellow at 50% and red at 80%. It updates
+  after each turn, `/compact`, `/clear` and `/resume`. While the engine has no
+  figure (a new session, or just after a compact or clear) it shows
+  `Context: no reading yet` until the next response.
+
 ## 1.2.0 — 2026-11-02
 
 - Adds the `clauding:sveltekit-pwa` skill. It scaffolds a SvelteKit app as an

@@ -36,7 +36,22 @@ skills, opinionated on purpose.
   force a hand-maintained `skills` array, which is a cost this repo has not
   earned yet. Invoke the [writing-for-agents](https://github.com/mattpocock/skills)
   skill before writing one.
+- Mod: hooks go in the one module `hooks/register.tsx`, which
+  `hooks/hooks.json` names. Every `$.state` value is declared under
+  `clauding` in `types/index.d.ts`, which `plugin.json` names as `types`.
+  Split a new mod into its own file under `hooks/` and register it from
+  `register.tsx`; the manifest allows one module.
 - Record it in `README.md` under the matching heading.
+
+## Checking a mod
+
+- Type-check with a scratch `tsconfig.json` outside the repo, as the header of
+  the plugin-authoring skill's `claude-code.d.ts` describes. An installed
+  plugin never gets the types laid beside it.
+- `claude plugin test .` runs `tests/*.test.tsx`. It also picks up the vitest
+  files under `skills/sveltekit-pwa/templates/` and reports them as "the file
+  did not load". Those two failures are expected: they are scaffold templates,
+  not mod tests. Every other failure is real.
 
 ## Release
 
@@ -85,6 +100,10 @@ Run these after every release. Each step has a checkable result.
    A `no` means the style did not load. Before hunting further, check that
    `~/.claude/output-styles/` holds no shadowing copy, and that the name carries
    the `clauding:` prefix — those two caused every failure so far.
+5. Check a mod by eye. Start `claude` in any folder and send one prompt. The
+   context band must show above the prompt with a percentage. A band that is
+   missing means the hooks module did not load: run `claude --debug` and look
+   for lines that start with `clauding:`.
 
 ## Stance on changes from other people
 
