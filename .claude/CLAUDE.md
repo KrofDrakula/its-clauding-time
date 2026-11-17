@@ -100,8 +100,10 @@ Run these after every release. Each step has a checkable result.
    A `no` means the style did not load. Before hunting further, check that
    `~/.claude/output-styles/` holds no shadowing copy, and that the name carries
    the `clauding:` prefix — those two caused every failure so far.
-5. Check a mod by eye. Start `claude` in any folder and send one prompt. The
-   context band must show above the prompt with a percentage. A band that is
+5. Check a mod by eye. Start `claude` in a folder you already trust (this repo
+   works) and send one prompt. A new folder such as `/tmp` stops at the
+   workspace trust prompt first. The context band must show above the prompt
+   with a percentage. A band that is
    missing means the hooks module did not load: run `claude --debug` and look
    for lines that start with `clauding:`.
 
