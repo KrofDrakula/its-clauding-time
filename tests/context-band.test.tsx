@@ -1,5 +1,5 @@
-import type { On, SessionMessage } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import type { On, SessionMessage, TurnUsage } from 'claude-code'
+import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 const BAND = {
@@ -247,4 +247,195 @@ test('the band reads the usage windows at session start', async ($, on) => {
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
 
   expect(await limitsText($)).toBe('81% (5h) / 40% (week)')
+})
+
+// The cache countdown, beside the context figure on the left.
+const CACHE = { type: 'Text', text: /^cache / }
+
+const cacheText = async ($: Engine) => {
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const text = (await ui.find(CACHE))?.text
+  await ui.unmount()
+  return text
+}
+
+const NO_CACHE = {
+  input_tokens: 10,
+  output_tokens: 20,
+  cache_read_input_tokens: 0,
+  cache_creation_input_tokens: 0,
+  model: 'claude-opus-5-5',
+} as const
+
+// Stands for the engine's request: each step answers the next usage given.
+const responses = (on: On, usages: TurnUsage[]) => {
+  let index = 0
+  on('turn.step', async function* (_, e) {
+    return {
+      turnId: e.turnId,
+      index: e.index,
+      answer: 'ok',
+      toolUses: [],
+      stopReason: 'end_turn' as const,
+      usage: usages[index++] ?? null,
+    }
+  })
+}
+
+const step = async ($: Engine, agentId?: string) => {
+  const stream = $.turn.step({
+    turnId: 't1',
+    index: 0,
+    model: 'claude-opus-5-5',
+    messageCount: 1,
+    ...(agentId === undefined ? {} : { agentId }),
+  })
+  for await (const _ of stream);
+  return stream.result
+}
+
+test('the band shows no cache figure before the first request', async $ => {
+  expect(await cacheText($)).toBeUndefined()
+})
+
+test('a five-minute write counts down from the request start', async ($, on) => {
+  const clock = mock.clock(on, { now: 1_000_000 })
+  responses(on, [
+    { ...NO_CACHE, cache_creation_input_tokens: 5_000, ephemeral_5m_input_tokens: 5_000, ephemeral_1h_input_tokens: 0 },
+  ])
+
+  await step($)
+  expect(await cacheText($)).toBe('cache 5:00')
+
+  await clock.advance(87_600)
+  expect(await cacheText($)).toBe('cache 3:33')
+
+  await clock.advance(200_000)
+  expect(await cacheText($)).toBe('cache 0:13')
+})
+
+test('a one-hour write counts down from an hour', async ($, on) => {
+  mock.clock(on)
+  responses(on, [
+    { ...NO_CACHE, cache_creation_input_tokens: 5_000, ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 5_000 },
+  ])
+
+  await step($)
+  expect(await cacheText($)).toBe('cache 60:00')
+})
+
+test('a write with no lifetime named counts as five minutes', async ($, on) => {
+  mock.clock(on)
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+
+  await step($)
+  expect(await cacheText($)).toBe('cache 5:00')
+})
+
+test('a read renews the entry at the last write\'s lifetime', async ($, on) => {
+  const clock = mock.clock(on)
+  responses(on, [
+    { ...NO_CACHE, cache_creation_input_tokens: 5_000, ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 5_000 },
+    { ...NO_CACHE, cache_read_input_tokens: 5_000 },
+  ])
+
+  await step($)
+  await clock.advance(1_800_000)
+  expect(await cacheText($)).toBe('cache 30:00')
+
+  await step($)
+  expect(await cacheText($)).toBe('cache 60:00')
+})
+
+test('a request that does not touch the cache keeps the countdown', async ($, on) => {
+  const clock = mock.clock(on)
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }, NO_CACHE])
+
+  await step($)
+  await clock.advance(60_000)
+  await step($)
+  expect(await cacheText($)).toBe('cache 4:00')
+})
+
+test('a subagent\'s request leaves the main cache alone', async ($, on) => {
+  mock.clock(on)
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+
+  await step($, 'agent-1')
+  expect(await cacheText($)).toBeUndefined()
+})
+
+test('the band says the cache is cold once it lapses', async ($, on) => {
+  const clock = mock.clock(on)
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+
+  await step($)
+  await clock.advance(300_000)
+  expect(await cacheText($)).toBe('cache cold')
+})
+
+test('the cache figure sits beside the context figure', async ($, on) => {
+  engine(on)
+  mock.clock(on)
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+
+  await step($)
+  await $.session.measure({
+    context: { tokens: 84_000, window: 200_000, percent: 42 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 5 }],
+    changed: ['context', 'rateLimits'],
+  })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const texts = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+  expect(texts).toEqual([
+    'Context ████░░░░░░ 42% · 84k / 200k tokens',
+    'cache 5:00',
+    '5% (5h)',
+  ])
+  await ui.unmount()
+})
+
+for (const reason of ['clear', 'resume'] as const) {
+  test(`a ${reason} drops the cache figure`, async ($, on) => {
+    mock.clock(on)
+    usage(on, { window: 200_000 })
+    responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+    on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+
+    await step($)
+    await $.session.end({ reason, sessionId: 's1', resume: { id: 's1' } })
+
+    expect(await cacheText($)).toBeUndefined()
+  })
+}
+
+test('a manual compact drops the cache figure', async ($, on) => {
+  mock.clock(on)
+  usage(on, { window: 200_000 })
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+  on('session.compact', () => ({
+    messages: [{ role: 'user', text: 'summary', toolUses: [] }],
+  }))
+
+  await step($)
+  await $.session.compact({ trigger: 'manual', messages: TRANSCRIPT })
+
+  expect(await cacheText($)).toBeUndefined()
+})
+
+test('the shown band redraws each second to keep the countdown live', async ($, on) => {
+  const clock = mock.clock(on)
+  usage(on, { window: 200_000 })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await step($)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find(CACHE))?.text).toBe('cache 5:00')
+
+  await clock.advance(3_000)
+  expect((await ui.find(CACHE))?.text).toBe('cache 4:57')
+  await ui.unmount()
 })

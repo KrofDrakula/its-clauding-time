@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0 — 2026-11-18
+
+- The context band now shows when the conversation's prompt cache expires,
+  beside the context figure: `cache 4:32`. The countdown starts at each main
+  request that reads or writes the cache, uses the lifetime the API reports
+  (5 minutes or 1 hour), and redraws each second on the wall clock. It turns
+  yellow in the last minute and shows `cache cold` once the entry lapses.
+  `/clear`, `/resume` and `/compact` remove it until the next response.
+  Subagent requests do not move it.
+
 ## 1.4.0 — 2026-11-17
 
 - The context band now shows the account's usage windows at the right end of
