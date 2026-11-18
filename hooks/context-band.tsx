@@ -83,7 +83,8 @@ const toFill = ({ tokens, window, percent }: SessionContextUsage): ContextFill =
   tokens === undefined ? null : { tokens, window, percent }
 
 const TTL_MS = { '5m': 300_000, '1h': 3_600_000 } as const
-const CACHE_WARN_MS = 60_000
+const CACHE_WARN_MS = 15 * 60_000
+const CACHE_ALARM_MS = 60_000
 const TICK_MS = 1_000
 
 // The lifetime a response gave the cache, or undefined when it did not touch
@@ -114,8 +115,11 @@ const cacheText = (leftMs: number): string => {
   return `cache ${Math.floor(seconds / 60)}:${rest}`
 }
 
+// Fixed thresholds for both lifetimes: a five-minute entry is yellow from
+// its start.
 const cacheColor = (leftMs: number): Color => {
   if (leftMs <= 0) return 'subtle'
+  if (leftMs <= CACHE_ALARM_MS) return 'error'
   if (leftMs <= CACHE_WARN_MS) return 'warning'
   return 'success'
 }

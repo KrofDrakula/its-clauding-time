@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1 — 2026-11-18
+
+- The prompt cache countdown changes colour at fixed times for both cache
+  lifetimes: yellow from 15 minutes left, red in the last minute. A 5-minute
+  cache is yellow from its start.
+
 ## 1.5.0 — 2026-11-18
 
 - The context band now shows when the conversation's prompt cache expires,

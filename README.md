@@ -44,7 +44,7 @@ so the bare name `STE100` will not resolve to this one.
 
 | Mod | What it does |
 | --- | ------------ |
-| Context band | Shows the context window's fill in a row above the prompt, for the whole session: `Context ████░░░░░░ 42% · 84k / 200k tokens`. Green below 50%, yellow from 50%, red from 80%. It updates after each turn, `/compact`, `/clear` and `/resume`. Beside it, a countdown shows when the prompt cache expires: `cache 4:32`, yellow in the last minute, `cache cold` once it lapses. On a Claude subscription, the right end of the row shows the account's usage windows: `5% (5h) / 12% (week)`, coloured by the fuller window. Collapse the band with `ctrl+x ctrl+a`. |
+| Context band | Shows the context window's fill in a row above the prompt, for the whole session: `Context ████░░░░░░ 42% · 84k / 200k tokens`. Green below 50%, yellow from 50%, red from 80%. It updates after each turn, `/compact`, `/clear` and `/resume`. Beside it, a countdown shows when the prompt cache expires: `cache 4:32`, yellow from 15 minutes left, red in the last minute, `cache cold` once it lapses. On a Claude subscription, the right end of the row shows the account's usage windows: `5% (5h) / 12% (week)`, coloured by the fuller window. Collapse the band with `ctrl+x ctrl+a`. |
 
 The mod is on as soon as the plugin is enabled; there is nothing to configure.
 

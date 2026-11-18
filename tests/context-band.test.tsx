@@ -439,3 +439,46 @@ test('the shown band redraws each second to keep the countdown live', async ($, 
   expect((await ui.find(CACHE))?.text).toBe('cache 4:57')
   await ui.unmount()
 })
+
+const cacheColor = async ($: Engine) => {
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const color = (await ui.find(CACHE))?.props.color
+  await ui.unmount()
+  return color
+}
+
+test('a one-hour countdown turns yellow at 15 minutes and red in the last', async ($, on) => {
+  const clock = mock.clock(on)
+  responses(on, [
+    { ...NO_CACHE, cache_creation_input_tokens: 5_000, ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 5_000 },
+  ])
+
+  await step($)
+  expect(await cacheColor($)).toBe('success')
+
+  await clock.advance(45 * 60_000 - 1_000)
+  expect(await cacheColor($)).toBe('success')
+
+  await clock.advance(1_000)
+  expect(await cacheColor($)).toBe('warning')
+
+  await clock.advance(14 * 60_000)
+  expect(await cacheColor($)).toBe('error')
+
+  await clock.advance(60_000)
+  expect(await cacheColor($)).toBe('subtle')
+})
+
+test('a five-minute countdown starts yellow and turns red in the last minute', async ($, on) => {
+  const clock = mock.clock(on)
+  responses(on, [{ ...NO_CACHE, cache_creation_input_tokens: 5_000 }])
+
+  await step($)
+  expect(await cacheColor($)).toBe('warning')
+
+  await clock.advance(4 * 60_000 - 1_000)
+  expect(await cacheColor($)).toBe('warning')
+
+  await clock.advance(1_000)
+  expect(await cacheColor($)).toBe('error')
+})
