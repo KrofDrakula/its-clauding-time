@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 — 2026-11-26
+
+- The context band no longer draws a progress bar. The context figure reads
+  `Context 42% · 84k / 200k tokens`; the colours are the same.
+- The 5h usage window now shows the time left until it resets, as H:mm:
+  `5% (5h, 2:15 left) / 12% (week)`. The figure redraws each second with the
+  other countdowns and drops back to `5% (5h)` when the engine gives no reset
+  time.
+
 ## 1.5.1 — 2026-11-18
 
 - The prompt cache countdown changes colour at fixed times for both cache

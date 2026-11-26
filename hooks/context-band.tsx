@@ -23,7 +23,6 @@ const limits = atom({ plugin: 'clauding', key: 'limits' } as const, null)
 // or writes the cache, and again once the conversation is swapped or compacted.
 const cache = atom({ plugin: 'clauding', key: 'cache' } as const, null)
 
-const BAR_CELLS = 10
 const WARN_AT = 50
 const ALARM_AT = 80
 
@@ -37,18 +36,12 @@ const compact = (tokens: number): string => {
   return String(tokens)
 }
 
-const bar = (percent: number): string => {
-  const cells = Math.round((percent / 100) * BAR_CELLS)
-  const filled = Math.min(BAR_CELLS, Math.max(0, cells))
-  return '█'.repeat(filled) + '░'.repeat(BAR_CELLS - filled)
-}
-
 const bandText = (context: ContextFill): string => {
   if (context?.tokens === undefined || context.percent === undefined) {
     return 'Context: no reading yet'
   }
   const { tokens, window, percent } = context
-  return `Context ${bar(percent)} ${percent}% · ${compact(tokens)} / ${compact(window)} tokens`
+  return `Context ${percent}% · ${compact(tokens)} / ${compact(window)} tokens`
 }
 
 // Autocompact starts near the top of the window: warn well before it.
@@ -69,14 +62,42 @@ const WINDOWS = [
 const toLimits = (rateLimits: SessionRateLimit[]): UsageLimits => {
   const shown = WINDOWS.flatMap(({ kind, label }) => {
     const window = rateLimits.find(limit => limit.kind === kind)
-    return window === undefined ? [] : [{ label, percent: window.percentUsed }]
+    if (window === undefined) return []
+    const resetsAt = window.resetsAt === undefined ? NaN : Date.parse(window.resetsAt)
+    return [
+      {
+        label,
+        percent: window.percentUsed,
+        ...(Number.isNaN(resetsAt) ? {} : { resetsAt }),
+      },
+    ]
   })
   return shown.length === 0 ? null : shown
 }
 
-// "5% (5h) / 12% (week)".
-const limitsText = (windows: NonNullable<UsageLimits>): string =>
-  windows.map(({ label, percent }) => `${Math.round(percent)}% (${label})`).join(' / ')
+// 8_100_000 -> "2:15". Rounds up to the minute, so the figure never reads 0:00
+// while time remains.
+const hoursMinutes = (leftMs: number): string => {
+  const minutes = Math.ceil(leftMs / 60_000)
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
+}
+
+// The time left in the 5h window, or undefined when the engine gave no reset
+// time or the time has passed.
+const fiveHourLeftMs = (windows: UsageLimits, now: number): number | undefined => {
+  const resetsAt = windows?.find(window => window.label === '5h')?.resetsAt
+  return resetsAt === undefined || resetsAt <= now ? undefined : resetsAt - now
+}
+
+// "5% (5h, 2:15 left) / 12% (week)".
+const limitsText = (windows: NonNullable<UsageLimits>, now: number): string =>
+  windows
+    .map(({ label, percent }) => {
+      const left = label === '5h' ? fiveHourLeftMs(windows, now) : undefined
+      const detail = left === undefined ? label : `${label}, ${hoursMinutes(left)} left`
+      return `${Math.round(percent)}% (${detail})`
+    })
+    .join(' / ')
 
 // Drops `breakdown`, which a stored figure has no use for.
 const toFill = ({ tokens, window, percent }: SessionContextUsage): ContextFill =>
@@ -136,16 +157,18 @@ const refresh = async ($: EngineInterface) => {
 // engine stops the old copy's `every` at the reload.
 let tick: Timer | undefined
 
-// Redraws the band each second while the cache lives, and once more as it
-// lapses, so the countdown keeps to the wall clock.
+// Redraws the band each second while the cache lives (and once more as it
+// lapses) or the 5h window runs, so the countdowns keep to the wall clock.
 const startTick = ($: EngineInterface) => {
   tick?.cancel()
   tick = $.clock.every(TICK_MS, async () => {
     const entry = await read($, cache)
-    if (entry === null) return
-    if (cacheLeftMs(entry, await $.clock.now()) > -2 * TICK_MS) {
-      $.ui.invalidate('ui.render')
-    }
+    const windows = await read($, limits)
+    if (entry === null && windows === null) return
+    const now = await $.clock.now()
+    const live = entry !== null && cacheLeftMs(entry, now) > -2 * TICK_MS
+    const windowLive = fiveHourLeftMs(windows, now) !== undefined
+    if (live || windowLive) $.ui.invalidate('ui.render')
   })
 }
 
@@ -211,7 +234,9 @@ export const registerContextBand = (on: On) => {
     const context = await read($, fill)
     const windows = await read($, limits)
     const entry = await read($, cache)
-    const cacheLeft = entry && cacheLeftMs(entry, await $.clock.now())
+    // Only a countdown needs the clock.
+    const now = entry || windows ? await $.clock.now() : 0
+    const cacheLeft = entry && cacheLeftMs(entry, now)
     const { Box, Text } = $.ui.resolve(e)
     const fullest = windows && Math.max(...windows.map(window => window.percent))
 
@@ -234,7 +259,7 @@ export const registerContextBand = (on: On) => {
         {windows && (
           <Box flexShrink={0}>
             <Text color={colorFor(fullest ?? undefined)} wrap="truncate">
-              {limitsText(windows)}
+              {limitsText(windows, now)}
             </Text>
           </Box>
         )}

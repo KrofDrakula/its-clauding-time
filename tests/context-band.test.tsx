@@ -45,7 +45,7 @@ test('the band shows the fill after a measurement', async ($, on) => {
     const ui = await $.ui.mount({ ...BAND, surface })
 
     expect((await ui.find({ type: 'Text', text: /Context/ }))?.text).toBe(
-      'Context ████░░░░░░ 42% · 84k / 200k tokens',
+      'Context 42% · 84k / 200k tokens',
     )
     await ui.unmount()
   }
@@ -62,7 +62,7 @@ test('the band follows the window of a 1M model', async ($, on) => {
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
 
   expect((await ui.find({ type: 'Text', text: /Context/ }))?.text).toBe(
-    'Context █████████░ 91% · 913k / 1M tokens',
+    'Context 91% · 913k / 1M tokens',
   )
   await ui.unmount()
 })
@@ -169,7 +169,7 @@ for (const reason of ['clear', 'resume'] as const) {
     expect(await bandText($)).toBe(
       reason === 'clear'
         ? 'Context: no reading yet'
-        : 'Context ███░░░░░░░ 30% · 60k / 200k tokens',
+        : 'Context 30% · 60k / 200k tokens',
     )
   })
 }
@@ -186,6 +186,7 @@ const limitsText = async ($: Engine) => {
 
 test('the band shows the usage windows on the right', async ($, on) => {
   engine(on)
+  mock.clock(on)
   await $.session.measure({
     context: { tokens: 84_000, window: 200_000, percent: 42 },
     rateLimits: [
@@ -217,6 +218,7 @@ test('the band shows no usage figure off a subscription', async ($, on) => {
 
 test('a context move keeps the last usage figures', async ($, on) => {
   engine(on)
+  mock.clock(on)
   await $.session.measure({
     context: { window: 200_000 },
     rateLimits: [{ kind: 'five_hour', percentUsed: 30 }],
@@ -232,6 +234,7 @@ test('a context move keeps the last usage figures', async ($, on) => {
 })
 
 test('the band reads the usage windows at session start', async ($, on) => {
+  mock.clock(on)
   on('session.usage', () => ({
     value: {
       startedAt: 0,
@@ -389,7 +392,7 @@ test('the cache figure sits beside the context figure', async ($, on) => {
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   const texts = (await ui.findAll({ type: 'Text' })).map(text => text.text)
   expect(texts).toEqual([
-    'Context ████░░░░░░ 42% · 84k / 200k tokens',
+    'Context 42% · 84k / 200k tokens',
     'cache 5:00',
     '5% (5h)',
   ])
@@ -481,4 +484,26 @@ test('a five-minute countdown starts yellow and turns red in the last minute', a
 
   await clock.advance(1_000)
   expect(await cacheColor($)).toBe('error')
+})
+
+// The time left in the 5h window, from the engine's reset time.
+test('the 5h window shows the time left as H:mm and counts down', async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on, { now: 1_000_000 })
+  await $.session.measure({
+    context: { tokens: 84_000, window: 200_000, percent: 42 },
+    rateLimits: [
+      { kind: 'five_hour', percentUsed: 5, resetsAt: new Date(1_000_000 + 8_100_000).toISOString() },
+      { kind: 'seven_day', percentUsed: 12, resetsAt: new Date(1_000_000 + 99_000_000).toISOString() },
+    ],
+    changed: ['context', 'rateLimits'],
+  })
+
+  expect(await limitsText($)).toBe('5% (5h, 2:15 left) / 12% (week)')
+
+  await clock.advance(60_000)
+  expect(await limitsText($)).toBe('5% (5h, 2:14 left) / 12% (week)')
+
+  await clock.advance(8_040_000)
+  expect(await limitsText($)).toBe('5% (5h) / 12% (week)')
 })
